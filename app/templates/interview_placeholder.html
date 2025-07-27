@@ -1,0 +1,595 @@
+{% extends "base.html" %}
+
+{% block title %}Interview Session - {{ interview_session.job_title }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <!-- Header Section -->
+        <div class="card mb-4 border-0 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-briefcase me-2"></i>
+                        Interview Session
+                    </h4>
+                    <span class="badge bg-light text-primary fs-6">
+                        {{ interview_session.status|title }}
+                    </span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-1">Position</h6>
+                        <p class="fs-5 fw-bold text-primary mb-3">{{ interview_session.job_title }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-1">Difficulty Level</h6>
+                        <span class="badge bg-{% if interview_session.difficulty_level == 'easy' %}success{% elif interview_session.difficulty_level == 'medium' %}warning{% else %}danger{% endif %} fs-6">
+                            {{ interview_session.difficulty_level|title }}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-1">Session ID</h6>
+                        <p class="text-monospace">#{{ interview_session.id }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-1">Created</h6>
+                        <p>{{ interview_session.created_at.strftime('%B %d, %Y at %I:%M %p') if interview_session.created_at else 'N/A' }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Interview Progress -->
+        <div class="card mb-4 border-0 shadow-sm" id="progressCard">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-tasks me-2"></i>
+                    Interview Progress
+                </h5>
+            </div>
+            <div class="d-flex flex-column mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <strong>Question <span id="currentQuestion">0</span> of {{ interview_session.questions|length if interview_session.questions else 0 }}</strong>
+                    <span id="progressPercent">0%</span>
+                </div>
+                <div class="progress" style="height: 8px;">
+                    <div class="progress-bar bg-success" role="progressbar" style="width: 0%" id="progressBar"></div>
+                </div>
+
+                <!-- Highlighted current question -->
+                <div class="bg-light border rounded mt-3 p-3 shadow-sm">
+                    <h6 class="text-muted mb-1">
+                        Current Question
+                    </h6>
+                    <p id="currentQuestionText" class="fs-5 fw-semibold text-primary mb-0">
+                        <!-- This will be updated dynamically -->
+                        Waiting to start...
+                    </p>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Interview Interface -->
+        <div class="card mb-4 border-0 shadow-sm" id="interviewCard">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-microphone me-2"></i>
+                    Interview in Progress
+                </h5>
+            </div>
+            <div class="card-body text-center">
+                <!-- Initial Start Button -->
+                <div id="startSection" class="py-5">
+                    <i class="fas fa-play-circle text-success fs-1 mb-3"></i>
+                    <h4 class="mb-3">Ready to Start Your Interview?</h4>
+                    <p class="text-muted mb-4">You have {{ interview_session.questions|length if interview_session.questions else 0 }} questions prepared. Each question will be played audio first, then you'll have time to record your answer.</p>
+                    <button class="btn btn-success btn-lg" onclick="startInterview()">
+                        <i class="fas fa-play me-2"></i>
+                        Start Interview
+                    </button>
+                </div>
+
+                <!-- Countdown Section -->
+                <div id="countdownSection" class="py-5" style="display: none;">
+                    <div class="countdown-circle mb-4">
+                        <span id="countdownNumber">5</span>
+                    </div>
+                    <h4 id="countdownText">Preparing next question...</h4>
+                    <p class="text-muted">Please listen carefully to the question</p>
+                </div>
+
+                <!-- Question Display Section -->
+                <div id="questionSection" class="py-4" style="display: none;">
+                    <div class="mb-4">
+                        <div class="badge bg-primary rounded-circle mb-3" style="width: 60px; height: 60px; font-size: 24px; line-height: 60px;">
+                            <span id="questionNumber">1</span>
+                        </div>
+                        <h4 id="questionText" class="mb-3">Question will appear here</h4>
+                        <div class="audio-player mb-3">
+                            <audio id="questionAudio" controls class="d-none">
+                                <source src="" type="audio/wav">
+                                Your browser does not support the audio element.
+                            </audio>
+                            <div id="audioControls" class="mb-3">
+                                <button class="btn btn-outline-primary" onclick="replayAudio()">
+                                    <i class="fas fa-redo me-2"></i>
+                                    Replay Question
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recording Section -->
+                <div id="recordingSection" class="py-4" style="display: none;">
+                    <div class="recording-indicator mb-4">
+                        <div class="recording-dot"></div>
+                        <span class="ms-2">Recording in progress...</span>
+                    </div>
+                    
+                    <div class="timer-display mb-4">
+                        <i class="fas fa-clock me-2"></i>
+                        <span id="recordingTimer">00:00</span>
+                    </div>
+                    
+                    <div class="recording-controls">
+                        <button class="btn btn-danger btn-lg me-3" onclick="stopRecording()">
+                            <i class="fas fa-stop me-2"></i>
+                            Stop & Save Recording
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="cancelRecording()">
+                            <i class="fas fa-times me-2"></i>
+                            Cancel
+                        </button>
+                    </div>
+                    
+                    <p class="text-muted mt-3">
+                        <small>Speak clearly and take your time. Click "Stop & Save Recording" when you're finished with your answer.</small>
+                    </p>
+                </div>
+
+                <!-- Recording Preview Section -->
+                <div id="previewSection" class="py-4" style="display: none;">
+                    <h5 class="mb-3">Review Your Answer</h5>
+                    <div class="mb-3">
+                        <audio id="recordingPreview" controls class="w-100">
+                            <source src="" type="audio/wav">
+                        </audio>
+                    </div>
+                    <div class="d-flex justify-content-center gap-3">
+                        <button class="btn btn-success btn-lg" onclick="saveAnswer()">
+                            <i class="fas fa-check me-2"></i>
+                            Save Answer & Continue
+                        </button>
+                        <button class="btn btn-outline-warning" onclick="rerecordAnswer()">
+                            <i class="fas fa-microphone me-2"></i>
+                            Re-record Answer
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Completion Section -->
+                <div id="completionSection" class="py-5" style="display: none;">
+                    <i class="fas fa-check-circle text-success fs-1 mb-3"></i>
+                    <h4 class="mb-3">Interview Completed!</h4>
+                    <p class="text-muted mb-4">Congratulations! You've successfully completed all interview questions.</p>
+                    <div class="d-flex justify-content-center gap-3">
+                        <button class="btn btn-primary btn-lg" onclick="viewResults()">
+                            <i class="fas fa-chart-bar me-2"></i>
+                            View Results
+                        </button>
+                        <a href="{{ url_for('main.interview_setup') }}" class="btn btn-outline-secondary btn-lg">
+                            <i class="fas fa-plus me-2"></i>
+                            New Interview
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Session Statistics -->
+        <div class="card mb-4 border-0 shadow-sm">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>
+                    Session Statistics
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <div class="mb-2">
+                            <i class="fas fa-file-pdf text-danger fs-2"></i>
+                        </div>
+                        <h6 class="text-muted mb-1">Resume Size</h6>
+                        <p class="fw-bold">{{ "%.1f"|format(interview_session.resume_text_data|length / 1024) }} KB</p>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-2">
+                            <i class="fas fa-list text-success fs-2"></i>
+                        </div>
+                        <h6 class="text-muted mb-1">Questions</h6>
+                        <p class="fw-bold">{{ interview_session.questions|length if interview_session.questions else 0 }}</p>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-2">
+                            <i class="fas fa-clock text-warning fs-2"></i>
+                        </div>
+                        <h6 class="text-muted mb-1">Est. Duration</h6>
+                        <p class="fw-bold">{{ (interview_session.questions|length * 5) if interview_session.questions else 0 }} min</p>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-2">
+                            <i class="fas fa-signal text-{% if interview_session.difficulty_level == 'easy' %}success{% elif interview_session.difficulty_level == 'medium' %}warning{% else %}danger{% endif %} fs-2"></i>
+                        </div>
+                        <h6 class="text-muted mb-1">Difficulty</h6>
+                        <p class="fw-bold">{{ interview_session.difficulty_level|title }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript for Interview Functionality -->
+<script>
+// Global variables
+let currentQuestionIndex = 0;
+let questions = {{ interview_session.questions|tojson if interview_session.questions else '[]' }};
+let audioFiles = {{ audio_files|tojson if audio_files else '{}' }};
+let mediaRecorder = null;
+let recordedChunks = [];
+let recordingStartTime = null;
+let timerInterval = null;
+let countdownInterval = null;
+
+// Initialize interview
+function startInterview() {
+    document.getElementById('startSection').style.display = 'none';
+    currentQuestionIndex = 0;
+    showCountdown();
+}
+
+// Show 5-second countdown before question
+function showCountdown() {
+    document.getElementById('countdownSection').style.display = 'block';
+    document.getElementById('questionSection').style.display = 'none';
+    document.getElementById('recordingSection').style.display = 'none';
+    document.getElementById('previewSection').style.display = 'none';
+    
+    let countdown = 5;
+    document.getElementById('countdownNumber').textContent = countdown;
+    document.getElementById('countdownText').textContent = 'Preparing next question...';
+    
+    countdownInterval = setInterval(() => {
+        countdown--;
+        document.getElementById('countdownNumber').textContent = countdown;
+        
+        if (countdown <= 0) {
+            clearInterval(countdownInterval);
+            showQuestion();
+        }
+    }, 1000);
+}
+
+// Show question and play audio
+function showQuestion() {
+    if (currentQuestionIndex >= questions.length) {
+        showCompletion();
+        return;
+    }
+    
+    document.getElementById('countdownSection').style.display = 'none';
+    document.getElementById('questionSection').style.display = 'block';
+    
+    // Update question display
+    document.getElementById('questionNumber').textContent = currentQuestionIndex + 1;
+    document.getElementById('questionText').textContent = questions[currentQuestionIndex];
+    
+    // Update progress
+    updateProgress();
+    
+    // Load and play audio if available
+    if (audioFiles && audioFiles[currentQuestionIndex.toString()]) {
+        const audioElement = document.getElementById('questionAudio');
+        const audioUrl = `/serve-audio/{{ interview_session.id }}/${audioFiles[currentQuestionIndex.toString()].split('/').pop()}`;
+        audioElement.src = audioUrl;
+        
+        // Auto-play audio
+        audioElement.play().then(() => {
+            console.log('Audio playing successfully');
+        }).catch(error => {
+            console.error('Error playing audio:', error);
+        });
+        
+        // Start recording countdown after audio ends
+        audioElement.onended = () => {
+            setTimeout(startRecordingCountdown, 1000);
+        };
+    } else {
+        // If no audio, start recording countdown after 3 seconds
+        setTimeout(startRecordingCountdown, 3000);
+    }
+}
+
+// Start countdown before recording
+function startRecordingCountdown() {
+    document.getElementById('countdownSection').style.display = 'block';
+    document.getElementById('questionSection').style.display = 'none';
+    document.getElementById('countdownText').textContent = 'Get ready to record your answer...';
+    
+    let countdown = 5;
+    document.getElementById('countdownNumber').textContent = countdown;
+    
+    countdownInterval = setInterval(() => {
+        countdown--;
+        document.getElementById('countdownNumber').textContent = countdown;
+        
+        if (countdown <= 0) {
+            clearInterval(countdownInterval);
+            startRecording();
+        }
+    }, 1000);
+}
+
+// Start recording
+async function startRecording() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        recordedChunks = [];
+        
+        mediaRecorder.ondataavailable = event => {
+            if (event.data.size > 0) {
+                recordedChunks.push(event.data);
+            }
+        };
+        
+        mediaRecorder.onstop = () => {
+            const blob = new Blob(recordedChunks, { type: 'audio/wav' });
+            const audioUrl = URL.createObjectURL(blob);
+            document.getElementById('recordingPreview').src = audioUrl;
+            showPreview();
+        };
+        
+        document.getElementById('countdownSection').style.display = 'none';
+        document.getElementById('recordingSection').style.display = 'block';
+        
+        mediaRecorder.start();
+        recordingStartTime = Date.now();
+        startTimer();
+        
+    } catch (error) {
+        console.error('Error accessing microphone:', error);
+        alert('Error accessing microphone. Please check your browser permissions.');
+    }
+}
+
+// Stop recording
+function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        stopTimer();
+    }
+}
+
+// Cancel recording
+function cancelRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        stopTimer();
+    }
+    showQuestion();
+}
+
+// Show recording preview
+function showPreview() {
+    document.getElementById('recordingSection').style.display = 'none';
+    document.getElementById('previewSection').style.display = 'block';
+}
+
+// Save answer and move to next question
+function saveAnswer() {
+    // Here you would typically upload the recording to your server
+    console.log('Saving answer for question', currentQuestionIndex + 1);
+    
+    currentQuestionIndex++;
+    
+    if (currentQuestionIndex >= questions.length) {
+        showCompletion();
+    } else {
+        showCountdown();
+    }
+}
+
+// Re-record answer
+function rerecordAnswer() {
+    document.getElementById('previewSection').style.display = 'none';
+    startRecordingCountdown();
+}
+
+// Show completion screen
+function showCompletion() {
+    document.getElementById('countdownSection').style.display = 'none';
+    document.getElementById('questionSection').style.display = 'none';
+    document.getElementById('recordingSection').style.display = 'none';
+    document.getElementById('previewSection').style.display = 'none';
+    document.getElementById('completionSection').style.display = 'block';
+    
+    updateProgress(true);
+}
+
+// Replay audio
+function replayAudio() {
+    const audioElement = document.getElementById('questionAudio');
+    audioElement.currentTime = 0;
+    audioElement.play();
+}
+
+// Start recording timer
+function startTimer() {
+    timerInterval = setInterval(() => {
+        const elapsed = Date.now() - recordingStartTime;
+        const minutes = Math.floor(elapsed / 60000);
+        const seconds = Math.floor((elapsed % 60000) / 1000);
+        document.getElementById('recordingTimer').textContent = 
+            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }, 1000);
+}
+
+// Stop timer
+function stopTimer() {
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+}
+
+// Update progress bar
+function updateProgress(completed = false) {
+    const total = questions.length;
+    const current = completed ? total : currentQuestionIndex + 1;
+    const percentage = (current / total) * 100;
+
+    document.getElementById('currentQuestion').textContent = current;
+    document.getElementById('progressBar').style.width = percentage + '%';
+    document.getElementById('progressPercent').textContent = Math.round(percentage) + '%';
+
+    // Update question text visibly
+    const currentTextElement = document.getElementById('currentQuestionText');
+    if (currentTextElement && !completed && questions[currentQuestionIndex]) {
+        currentTextElement.textContent = questions[currentQuestionIndex];
+    } else if (completed) {
+        currentTextElement.textContent = "All questions completed!";
+    } else {
+        currentTextElement.textContent = "Waiting to start...";
+    }
+}
+
+// View results (placeholder)
+function viewResults() {
+    alert('Results functionality will be implemented soon!');
+}
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Interview page loaded');
+    console.log('Questions:', questions);
+    console.log('Audio files:', audioFiles);
+});
+</script>
+
+<!-- Custom CSS -->
+<style>
+
+#currentQuestionText {
+    transition: all 0.3s ease-in-out;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #0d6efd; /* Bootstrap primary */
+}
+
+.countdown-circle {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: linear-gradient(45deg, #007bff, #28a745);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+}
+
+.countdown-circle span {
+    font-size: 3rem;
+    font-weight: bold;
+    color: white;
+}
+
+.recording-dot {
+    width: 12px;
+    height: 12px;
+    background-color: #dc3545;
+    border-radius: 50%;
+    display: inline-block;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.3; }
+    100% { opacity: 1; }
+}
+
+.recording-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.timer-display {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #28a745;
+}
+
+.audio-player audio {
+    width: 100%;
+    max-width: 400px;
+}
+
+.card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.badge {
+    font-size: 0.875rem;
+}
+
+.text-monospace {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+}
+
+.btn-lg {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+}
+
+@media (max-width: 768px) {
+    .d-flex.gap-3 {
+        flex-direction: column;
+    }
+    
+    .btn-lg {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .countdown-circle {
+        width: 100px;
+        height: 100px;
+    }
+    
+    .countdown-circle span {
+        font-size: 2.5rem;
+    }
+}
+</style>
+{% endblock %}

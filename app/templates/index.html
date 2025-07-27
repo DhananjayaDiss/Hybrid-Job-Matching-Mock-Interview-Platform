@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Flask Auth0 App{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto text-center">
+        <h1 class="display-4 mb-4">Welcome to interview platform</h1>
+        <p class="lead mb-4">A modern Flask application with Auth0 authentication and Gemini AI integration.</p>
+        
+        {% if user %}
+            <div class="alert alert-success" role="alert">
+                <h4 class="alert-heading">Welcome back, {{ user.userinfo.name }}!</h4>
+                <p>You are successfully logged in.</p>
+                <hr>
+                <p class="mb-0">
+                    <a class="btn btn-primary" href="{{ url_for('main.dashboard') }}">Go to Dashboard</a>
+                </p>
+            </div>
+        {% else %}
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Get Started</h5>
+                    <p class="card-text">Sign in to access your dashboard and AI-powered features.</p>
+                    <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg">Sign In with Auth0</a>
+                </div>
+            </div>
+        {% endif %}
+        
+        <div class="row mt-5">
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">🔐 Secure Authentication</h5>
+                        <p class="card-text">Powered by Auth0 for enterprise-grade security.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">🤖 AI Integration</h5>
+                        <p class="card-text">Chat with Google's Gemini AI for intelligent responses.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">⚡ Modern Stack</h5>
+                        <p class="card-text">Built with Flask, UV, and modern Python practices.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

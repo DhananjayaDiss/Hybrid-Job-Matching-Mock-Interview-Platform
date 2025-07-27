@@ -1,0 +1,447 @@
+{% extends "base.html" %}
+
+{% block title %}Interview Setup - Flask Auth0 App{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">
+                    <i class="fas fa-briefcase me-2"></i>
+                    Live Interview Setup
+                </h4>
+            </div>
+            <div class="card-body">
+                <!-- Flash messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <!-- Dynamic Alert Container -->
+                <div id="alert-container"></div>
+
+                <div class="mb-4">
+                    <h6 class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Prepare for your AI-powered interview experience
+                    </h6>
+                    <p class="text-muted small">
+                        Upload your resume, specify the job role, and get ready for personalized interview questions 
+                        based on your background and the position you're applying for.
+                    </p>
+                </div>
+
+                <!-- Main Form -->
+                <form id="interview-form" enctype="multipart/form-data">
+                    <!-- Resume Upload Section -->
+                    <div class="mb-4">
+                        <label for="resume" class="form-label">
+                            <i class="fas fa-file-pdf me-1"></i>
+                            Upload Resume (PDF only) <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group">
+                            <input type="file" 
+                                   class="form-control" 
+                                   id="resume" 
+                                   name="resume" 
+                                   accept=".pdf"
+                                   required
+                                   onchange="validateFile(this)">
+                            <span class="input-group-text">
+                                <i class="fas fa-upload"></i>
+                            </span>
+                        </div>
+                        <div class="form-text">
+                            <i class="fas fa-exclamation-triangle text-warning me-1"></i>
+                            Only PDF files are accepted. Max size: 10MB
+                        </div>
+                        <div id="file-info" class="mt-2"></div>
+                    </div>
+
+                    <!-- Job Title Section -->
+                    <div class="mb-4">
+                        <label for="job_title" class="form-label">
+                            <i class="fas fa-user-tie me-1"></i>
+                            Job Title/Position <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="job_title" 
+                               name="job_title" 
+                               placeholder="e.g., Software Engineer, Data Scientist, Product Manager"
+                               required
+                               maxlength="100">
+                        <div class="form-text">
+                            Enter the specific position you're interviewing for
+                        </div>
+                    </div>
+
+                    <!-- Difficulty Level Section -->
+                    <div class="mb-4">
+                        <label class="form-label">
+                            <i class="fas fa-chart-line me-1"></i>
+                            Interview Difficulty Level <span class="text-danger">*</span>
+                        </label>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" 
+                                           type="radio" 
+                                           name="difficulty_level" 
+                                           id="easy" 
+                                           value="easy">
+                                    <label class="form-check-label" for="easy">
+                                        <i class="fas fa-star text-success me-1"></i>
+                                        <strong>Easy</strong>
+                                        <div class="text-muted small">
+                                            Basic questions, entry-level positions
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" 
+                                           type="radio" 
+                                           name="difficulty_level" 
+                                           id="medium" 
+                                           value="medium" 
+                                           checked>
+                                    <label class="form-check-label" for="medium">
+                                        <i class="fas fa-star text-warning me-1"></i>
+                                        <strong>Medium</strong>
+                                        <div class="text-muted small">
+                                            Standard questions, mid-level positions
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" 
+                                           type="radio" 
+                                           name="difficulty_level" 
+                                           id="hard" 
+                                           value="hard">
+                                    <label class="form-check-label" for="hard">
+                                        <i class="fas fa-fire text-danger me-1"></i>
+                                        <strong>Hard</strong>
+                                        <div class="text-muted small">
+                                            Advanced questions, senior-level positions
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Interview Preview Section -->
+                    <div class="card bg-light mb-4">
+                        <div class="card-body">
+                            <h6 class="card-title">
+                                <i class="fas fa-eye me-1"></i>
+                                What to Expect
+                            </h6>
+                            <ul class="list-unstyled mb-0">
+                                <li class="mb-2">
+                                    <i class="fas fa-check text-success me-2"></i>
+                                    Personalized questions based on your resume
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-check text-success me-2"></i>
+                                    Role-specific technical and behavioral questions
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-check text-success me-2"></i>
+                                    Real-time AI conversation and follow-up questions
+                                </li>
+                                <li class="mb-0">
+                                    <i class="fas fa-check text-success me-2"></i>
+                                    Detailed feedback and performance analysis
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg" id="start-interview-btn">
+                            <i class="fas fa-video me-2"></i>
+                            Start Live Interview
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Tips Card -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-lightbulb text-warning me-1"></i>
+                    Interview Tips
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Before the Interview:</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-arrow-right text-primary me-2"></i>Ensure your resume is up-to-date</li>
+                            <li><i class="fas fa-arrow-right text-primary me-2"></i>Test your microphone and camera</li>
+                            <li><i class="fas fa-arrow-right text-primary me-2"></i>Find a quiet, well-lit space</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>During the Interview:</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-arrow-right text-success me-2"></i>Speak clearly and confidently</li>
+                            <li><i class="fas fa-arrow-right text-success me-2"></i>Take your time to think</li>
+                            <li><i class="fas fa-arrow-right text-success me-2"></i>Ask for clarification if needed</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center py-5">
+                <div class="mb-4">
+                    <div class="spinner-border text-primary" style="width: 4rem; height: 4rem;" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+                <h5 class="mb-3">Processing Your Resume</h5>
+                <p class="text-muted mb-0" id="loading-text">
+                    Please wait while we analyze your resume and prepare your personalized interview...
+                </p>
+                <div class="progress mt-3" style="height: 8px;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" 
+                         style="width: 0%" 
+                         id="progress-bar">
+                    </div>
+                </div>
+                <small class="text-muted mt-2 d-block" id="progress-text">Uploading resume...</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function validateFile(input) {
+    const file = input.files[0];
+    const fileInfo = document.getElementById('file-info');
+    
+    if (file) {
+        // Check file type
+        if (file.type !== 'application/pdf') {
+            fileInfo.innerHTML = '<div class="alert alert-danger">Please select a PDF file only.</div>';
+            input.value = '';
+            return;
+        }
+        
+        // Check file size (10MB limit)
+        const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+        if (file.size > maxSize) {
+            fileInfo.innerHTML = '<div class="alert alert-danger">File size too large. Please select a file smaller than 10MB.</div>';
+            input.value = '';
+            return;
+        }
+        
+        // Show file info
+        const fileSize = (file.size / 1024 / 1024).toFixed(2);
+        fileInfo.innerHTML = `
+            <div class="alert alert-success">
+                <i class="fas fa-check-circle me-1"></i>
+                <strong>${file.name}</strong> (${fileSize} MB) - Ready to upload
+            </div>
+        `;
+    } else {
+        fileInfo.innerHTML = '';
+    }
+}
+
+function showAlert(message, type = 'danger') {
+    const alertContainer = document.getElementById('alert-container');
+    const alertHTML = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    alertContainer.innerHTML = alertHTML;
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        const alert = alertContainer.querySelector('.alert');
+        if (alert) {
+            alert.remove();
+        }
+    }, 5000);
+}
+
+function updateProgress(percentage, text) {
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+    
+    progressBar.style.width = percentage + '%';
+    progressText.textContent = text;
+}
+
+// Handle form submission with AJAX
+document.getElementById('interview-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+    
+    // Show loading modal
+    loadingModal.show();
+    
+    // Simulate progress updates
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+        progress += Math.random() * 15;
+        if (progress > 90) progress = 90;
+        
+        let text = 'Uploading resume...';
+        if (progress > 30) text = 'Extracting text from PDF...';
+        if (progress > 60) text = 'Analyzing resume content...';
+        if (progress > 80) text = 'Preparing interview questions...';
+        
+        updateProgress(progress, text);
+    }, 500);
+    
+    console.log('Making AJAX request to:', '{{ url_for("main.upload_resume") }}');
+    
+    // Make AJAX request
+    fetch('{{ url_for("main.upload_resume") }}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        console.log('Response headers:', response.headers);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        return response.json();
+    })
+    .then(data => {
+        console.log('Response data:', data);
+        clearInterval(progressInterval);
+        
+        if (data.success) {
+            // Complete progress
+            updateProgress(100, 'Complete! Redirecting to interview...');
+            
+            // Show success message
+            showAlert(data.message, 'success');
+            
+            // Wait a moment then redirect
+            setTimeout(() => {
+                window.location.href = data.redirect_url;
+            }, 1500);
+            
+        } else {
+            // Hide loading modal
+            loadingModal.hide();
+            
+            // Show error message
+            showAlert(data.error, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Fetch error:', error);
+        clearInterval(progressInterval);
+        loadingModal.hide();
+        showAlert(`Network error: ${error.message}. Please check the console for details.`, 'danger');
+    });
+});
+
+// Auto-fill job title suggestions (basic implementation)
+const jobTitleInput = document.getElementById('job_title');
+const commonJobTitles = [
+    'Software Engineer', 'Senior Software Engineer', 'Full Stack Developer',
+    'Frontend Developer', 'Backend Developer', 'Data Scientist', 'Data Analyst',
+    'Product Manager', 'Project Manager', 'DevOps Engineer', 'QA Engineer',
+    'UI/UX Designer', 'Marketing Manager', 'Sales Representative', 'Business Analyst'
+];
+
+jobTitleInput.addEventListener('input', function() {
+    // Simple autocomplete functionality could be added here
+    console.log('Job title input:', this.value);
+});
+</script>
+
+<style>
+.form-check-input:checked ~ .form-check-label {
+    color: #0d6efd;
+}
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.btn-primary {
+    background: linear-gradient(45deg, #0d6efd, #0b5ed7);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(45deg, #0b5ed7, #0a58ca);
+}
+
+.alert-dismissible .btn-close {
+    padding: 0.75rem 1.25rem;
+}
+
+.form-control:focus, .form-check-input:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.modal-content {
+    border: none;
+    border-radius: 1rem;
+    box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+}
+
+.progress {
+    background-color: #e9ecef;
+    border-radius: 1rem;
+}
+
+.progress-bar {
+    background: linear-gradient(45deg, #0d6efd, #0b5ed7);
+    border-radius: 1rem;
+}
+
+.spinner-border {
+    animation: spinner-border .75s linear infinite;
+}
+
+@keyframes spinner-border {
+    to {
+        transform: rotate(360deg);
+    }
+}
+</style>
+{% endblock %}

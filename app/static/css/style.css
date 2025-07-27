@@ -1,0 +1,39 @@
+body {
+    background-color: #f8f9fa;
+}
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.chat-message {
+    margin-bottom: 10px;
+    padding: 8px 12px;
+    border-radius: 8px;
+}
+
+.user-message {
+    background-color: #007bff;
+    color: white;
+    margin-left: 20%;
+    text-align: right;
+}
+
+.ai-message {
+    background-color: #e9ecef;
+    color: #333;
+    margin-right: 20%;
+}
+
+.navbar-brand {
+    font-weight: bold;
+}
+
+.display-4 {
+    font-weight: 300;
+}
+
+pre code {
+    font-size: 0.875rem;
+}

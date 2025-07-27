@@ -8,6 +8,12 @@ __pycache__/
 .venv/
 venv/
 
+.audio_files/
+audio_files/
+
+.uploads/
+uploads/
+
 # Environment Variables
 .env
 *.env
@@ -31,3 +37,7 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+
+migrations/__pycache__/
+*.pyc

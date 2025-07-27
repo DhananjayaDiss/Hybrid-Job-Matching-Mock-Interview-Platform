@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Flask Auth0 App{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Profile Information</h5>
+            </div>
+            <div class="card-body text-center">
+                {% if userinfo.picture %}
+                    <img src="{{ userinfo.picture }}" alt="Profile" class="rounded-circle mb-3" width="100" height="100">
+                {% endif %}
+                <h5>{{ userinfo.name }}</h5>
+                <p class="text-muted">{{ userinfo.email }}</p>
+                <small class="text-muted">Last login: {{ userinfo.updated_at }}</small>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary" onclick="testGeminiAPI()">Test Gemini AI</button>
+                    <button class="btn btn-outline-secondary" onclick="showProfile()">View Full Profile</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Text-to-Speech Card -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Text to Speech</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="voice-select" class="form-label">Voice:</label>
+                    <select id="voice-select" class="form-select mb-2">
+                        <option value="Kore">Kore (Default)</option>
+                        <option value="Charon">Charon</option>
+                    </select>
+                    <textarea id="tts-input" class="form-control" rows="3" placeholder="Enter text to convert to speech..."></textarea>
+                </div>
+                <div class="d-grid">
+                    <button class="btn btn-success" onclick="generateSpeech()" id="tts-btn">
+                        <span id="tts-spinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
+                        Generate Speech
+                    </button>
+                </div>
+                <div id="tts-result" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">AI Chat</h5>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="speech-toggle">
+                    <label class="form-check-label" for="speech-toggle">
+                        Generate Speech
+                    </label>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="chat-messages" class="mb-3" style="height: 300px; overflow-y: auto; border: 1px solid #dee2e6; padding: 10px; border-radius: 5px;">
+                    <div class="text-muted text-center">Start a conversation with Gemini AI...</div>
+                </div>
+                
+                <div class="input-group">
+                    <input type="text" id="chat-input" class="form-control" placeholder="Ask Gemini anything..." onkeypress="handleKeyPress(event)">
+                    <button class="btn btn-primary" onclick="sendMessage()" id="send-btn">
+                        <span id="chat-spinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
+                        Send
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Raw Profile Data</h6>
+            </div>
+            <div class="card-body">
+                <pre class="bg-light p-3 rounded"><code>{{ userinfo_pretty }}</code></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Get auth token from session (you'll need to pass this from your backend)
+function getAuthHeaders() {
+    return {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer {{ session.access_token }}' // Adjust based on your auth implementation
+    };
+}
+
+// Text-to-Speech functionality
+async function generateSpeech() {
+    const text = document.getElementById('tts-input').value.trim();
+    const voice = document.getElementById('voice-select').value;
+    const btn = document.getElementById('tts-btn');
+    const spinner = document.getElementById('tts-spinner');
+    const resultDiv = document.getElementById('tts-result');
+    
+    if (!text) {
+        alert('Please enter some text');
+        return;
+    }
+    
+    // Show loading state
+    btn.disabled = true;
+    spinner.classList.remove('d-none');
+    resultDiv.innerHTML = '';
+    
+    try {
+        const response = await fetch('/api/generate-speech', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ 
+                text: text,
+                voice: voice 
+            })
+        });
+        
+        if (response.ok) {
+            // Create blob from response
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            
+            // Create audio element
+            const audio = document.createElement('audio');
+            audio.controls = true;
+            audio.src = url;
+            
+            // Create download link
+            const downloadLink = document.createElement('a');
+            downloadLink.href = url;
+            downloadLink.download = 'speech.wav';
+            downloadLink.className = 'btn btn-sm btn-outline-primary ms-2';
+            downloadLink.textContent = 'Download';
+            
+            // Add to result div
+            resultDiv.innerHTML = '<div class="alert alert-success">Speech generated successfully!</div>';
+            const audioContainer = document.createElement('div');
+            audioContainer.className = 'd-flex align-items-center';
+            audioContainer.appendChild(audio);
+            audioContainer.appendChild(downloadLink);
+            resultDiv.appendChild(audioContainer);
+            
+        } else {
+            const error = await response.json();
+            resultDiv.innerHTML = `<div class="alert alert-danger">Error: ${error.error}</div>`;
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        resultDiv.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+    } finally {
+        // Hide loading state
+        btn.disabled = false;
+        spinner.classList.add('d-none');
+    }
+}
+
+// Enhanced chat functionality with optional speech
+async function sendMessage() {
+    const chatInput = document.getElementById('chat-input');
+    const chatMessages = document.getElementById('chat-messages');
+    const sendBtn = document.getElementById('send-btn');
+    const chatSpinner = document.getElementById('chat-spinner');
+    const speechToggle = document.getElementById('speech-toggle');
+    const message = chatInput.value.trim();
+    
+    if (!message) return;
+    
+    // Add user message to chat
+    addMessageToChat('You', message, 'user');
+    chatInput.value = '';
+    
+    // Show loading state
+    sendBtn.disabled = true;
+    chatSpinner.classList.remove('d-none');
+    
+    try {
+        const response = await fetch('/api/chat-with-speech', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                message: message,
+                generate_audio: speechToggle.checked,
+                voice: document.getElementById('voice-select').value
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            // Add AI response to chat
+            const messageId = addMessageToChat('Gemini', data.response, 'ai');
+            
+            // If audio was generated, add audio player
+            if (data.audio) {
+                addAudioToMessage(messageId, data.audio);
+            }
+            
+            if (data.audio_error) {
+                console.warn('Audio generation failed:', data.audio_error);
+            }
+        } else {
+            addMessageToChat('System', `Error: ${data.error}`, 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        addMessageToChat('System', `Error: ${error.message}`, 'error');
+    } finally {
+        // Hide loading state
+        sendBtn.disabled = false;
+        chatSpinner.classList.add('d-none');
+    }
+}
+
+function addMessageToChat(sender, message, type) {
+    const chatMessages = document.getElementById('chat-messages');
+    const messageId = 'msg-' + Date.now();
+    
+    // Clear initial message if it exists
+    const initialMsg = chatMessages.querySelector('.text-muted.text-center');
+    if (initialMsg) {
+        initialMsg.remove();
+    }
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.id = messageId;
+    messageDiv.className = `mb-2 ${type === 'user' ? 'text-end' : ''}`;
+    
+    const badge = type === 'user' ? 'bg-primary' : type === 'error' ? 'bg-danger' : 'bg-success';
+    
+    messageDiv.innerHTML = `
+        <div class="d-inline-block max-width-75">
+            <span class="badge ${badge} mb-1">${sender}</span>
+            <div class="bg-light p-2 rounded">${message}</div>
+        </div>
+    `;
+    
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    
+    return messageId;
+}
+
+function addAudioToMessage(messageId, audioBase64) {
+    const messageDiv = document.getElementById(messageId);
+    const audioContainer = messageDiv.querySelector('.bg-light');
+    
+    // Convert base64 to blob
+    const binaryString = atob(audioBase64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    const blob = new Blob([bytes], { type: 'audio/wav' });
+    const audioUrl = URL.createObjectURL(blob);
+    
+    // Create audio element
+    const audio = document.createElement('audio');
+    audio.controls = true;
+    audio.src = audioUrl;
+    audio.className = 'mt-2 w-100';
+    
+    audioContainer.appendChild(audio);
+}
+
+function handleKeyPress(event) {
+    if (event.key === 'Enter') {
+        sendMessage();
+    }
+}
+
+function testGeminiAPI() {
+    document.getElementById('chat-input').value = 'Hello! Can you tell me about yourself?';
+    sendMessage();
+}
+
+function showProfile() {
+    const profileData = document.querySelector('pre code').textContent;
+    alert('Profile data copied to console');
+    console.log('Profile Data:', profileData);
+}
+
+// Load available voices on page load
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        const response = await fetch('/api/voices', {
+            headers: getAuthHeaders()
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            const voiceSelect = document.getElementById('voice-select');
+            voiceSelect.innerHTML = '';
+            
+            data.voices.forEach(voice => {
+                const option = document.createElement('option');
+                option.value = voice.name;
+                option.textContent = `${voice.name} - ${voice.description}`;
+                voiceSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.warn('Could not load voices:', error);
+    }
+});
+</script>
+
+<style>
+.max-width-75 {
+    max-width: 75%;
+}
+
+#chat-messages .bg-light {
+    word-wrap: break-word;
+}
+
+.form-check-input:checked {
+    background-color: #198754;
+    border-color: #198754;
+}
+</style>
+{% endblock %}
